@@ -33,19 +33,23 @@ func counter(w http.ResponseWriter, r *http.Request) {
 
 	// count last 1 min
 	time_1min_ago := time_current.Add(-time.Second)
-	var idx = 0
 	timezone, _ := time.LoadLocation("Local")
-	for i, line := range lines {
-		idx = i
-		t, err := time.ParseInLocation(LAYOUT, line, timezone)
+
+	left := 0
+	right := len(lines) - 1
+	for left <= right {
+		mid := (left + right) / 2
+		t, err := time.ParseInLocation(LAYOUT, lines[mid], timezone)
 		if err != nil {
 			log.Fatal(err)
 		}
 		if t.After(time_1min_ago) {
-			break
+			right = mid - 1
+		} else {
+			left = mid + 1
 		}
 	}
-	result := len(lines) - idx - 1
+	result := len(lines) - left
 
 	// Write file and response
 	fmt.Fprintln(w, result)
