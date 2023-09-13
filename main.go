@@ -17,12 +17,12 @@ const (
 )
 
 type SafeFile struct {
-	Mu sync.Mutex
+	mu sync.Mutex
 }
 
 func (sf *SafeFile) Write(s string) (int, error) {
-	sf.Mu.Lock()
-	defer sf.Mu.Unlock()
+	sf.mu.Lock()
+	defer sf.mu.Unlock()
 
 	f, err := os.OpenFile(COUNTER_FILE, os.O_APPEND+os.O_WRONLY+os.O_CREATE, 0666)
 	if err != nil {
