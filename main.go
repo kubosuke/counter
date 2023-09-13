@@ -16,46 +16,34 @@ const (
 	LAYOUT       = "2006-01-02 15:04:05.999999999"
 )
 
-type SafeFile struct {
-	mu sync.Mutex
-}
+var (
+	data []string
+	mu   sync.Mutex
+)
 
-func (sf *SafeFile) Write(s string) (int, error) {
-	sf.mu.Lock()
-	defer sf.mu.Unlock()
-
-	f, err := os.OpenFile(COUNTER_FILE, os.O_APPEND+os.O_WRONLY+os.O_CREATE, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-
-	return f.WriteString(s)
-}
-
-func (sf *SafeFile) ReadAll() ([]byte, error) {
+func init() {
 	f, err := os.OpenFile(COUNTER_FILE, os.O_RDONLY+os.O_CREATE, 0666)
+	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
-	return io.ReadAll(f)
-}
-
-func counter(w http.ResponseWriter, r *http.Request) {
-	time_current := time.Now()
-
-	sf := new(SafeFile)
-	b, err := sf.ReadAll()
+	b, err := io.ReadAll(f)
 	if err != nil {
 		log.Fatal(err)
 	}
 	lines := strings.Split(string(b), "\n")
-	lines = lines[:len(lines)-1]
+	data = lines[:len(lines)-1]
+}
+
+func counter(w http.ResponseWriter, r *http.Request) {
+	mu.Lock()
+	defer mu.Unlock()
+	time_current := time.Now()
 
 	time_1min_ago := time_current.Add(-time.Minute)
-	var idx = 0
+	idx := 0
 	timezone, _ := time.LoadLocation("Local")
-	for i, line := range lines {
+	for i, line := range data {
 		idx = i
 		t, err := time.ParseInLocation(LAYOUT, line, timezone)
 		if err != nil {
@@ -65,10 +53,16 @@ func counter(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	result := len(lines) - idx - 1
+	result := len(data) - idx
 
 	fmt.Fprintln(w, result)
-	if _, err = sf.Write(fmt.Sprintln(time_current.Format(LAYOUT))); err != nil {
+	data = append(data, fmt.Sprint(time_current.Format(LAYOUT)))
+	f, err := os.OpenFile(COUNTER_FILE, os.O_APPEND+os.O_WRONLY+os.O_CREATE, 0666)
+	defer f.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err = f.WriteString(fmt.Sprintln(time_current.Format(LAYOUT))); err != nil {
 		log.Fatal(err)
 	}
 }
