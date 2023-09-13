@@ -42,10 +42,8 @@ func (sf *SafeFile) ReadAll() ([]byte, error) {
 }
 
 func counter(w http.ResponseWriter, r *http.Request) {
-	// time
 	time_current := time.Now()
 
-	// Read file
 	sf := new(SafeFile)
 	b, err := sf.ReadAll()
 	if err != nil {
@@ -54,7 +52,6 @@ func counter(w http.ResponseWriter, r *http.Request) {
 	lines := strings.Split(string(b), "\n")
 	lines = lines[:len(lines)-1]
 
-	// count last 1 min
 	time_1min_ago := time_current.Add(-time.Minute)
 	var idx = 0
 	timezone, _ := time.LoadLocation("Local")
@@ -70,7 +67,6 @@ func counter(w http.ResponseWriter, r *http.Request) {
 	}
 	result := len(lines) - idx - 1
 
-	// Write file and response
 	fmt.Fprintln(w, result)
 	if _, err = sf.Write(fmt.Sprintln(time_current.Format(LAYOUT))); err != nil {
 		log.Fatal(err)
