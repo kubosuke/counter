@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -15,16 +16,38 @@ const (
 	LAYOUT       = "2006-01-02 15:04:05.999999999"
 )
 
+type SafeFile struct {
+	Mu sync.Mutex
+}
+
+func (sf *SafeFile) Write(s string) (int, error) {
+	sf.Mu.Lock()
+	defer sf.Mu.Unlock()
+
+	f, err := os.OpenFile(COUNTER_FILE, os.O_APPEND+os.O_WRONLY+os.O_CREATE, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	return f.WriteString(s)
+}
+
+func (sf *SafeFile) ReadAll() ([]byte, error) {
+	f, err := os.OpenFile(COUNTER_FILE, os.O_RDONLY+os.O_CREATE, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return io.ReadAll(f)
+}
+
 func counter(w http.ResponseWriter, r *http.Request) {
 	// time
 	time_current := time.Now()
 
 	// Read file
-	f, err := os.OpenFile(COUNTER_FILE, os.O_RDWR+os.O_CREATE, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-	b, err := io.ReadAll(f)
+	sf := new(SafeFile)
+	b, err := sf.ReadAll()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,7 +72,7 @@ func counter(w http.ResponseWriter, r *http.Request) {
 
 	// Write file and response
 	fmt.Fprintln(w, result)
-	if _, err = f.WriteString(fmt.Sprintln(time_current.Format(LAYOUT))); err != nil {
+	if _, err = sf.Write(fmt.Sprintln(time_current.Format(LAYOUT))); err != nil {
 		log.Fatal(err)
 	}
 }
