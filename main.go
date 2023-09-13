@@ -55,7 +55,7 @@ func counter(w http.ResponseWriter, r *http.Request) {
 	lines = lines[:len(lines)-1]
 
 	// count last 1 min
-	time_1min_ago := time_current.Add(-time.Second)
+	time_1min_ago := time_current.Add(-time.Minute)
 	var idx = 0
 	timezone, _ := time.LoadLocation("Local")
 	for i, line := range lines {
