@@ -48,7 +48,8 @@ func CounterHandler(w http.ResponseWriter, r *http.Request) {
 		idx = i
 		t, err := time.ParseInLocation(LAYOUT, line, timezone)
 		if err != nil {
-			log.Fatal(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		if t.After(time_1min_ago) {
 			break
@@ -60,11 +61,13 @@ func CounterHandler(w http.ResponseWriter, r *http.Request) {
 	data = append(data, fmt.Sprint(time_current.Format(LAYOUT)))
 	f, err := os.OpenFile(COUNTER_FILE, os.O_APPEND+os.O_WRONLY+os.O_CREATE, 0666)
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	defer f.Close()
 
 	if _, err = f.WriteString(fmt.Sprintln(time_current.Format(LAYOUT))); err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
