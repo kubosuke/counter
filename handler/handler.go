@@ -23,10 +23,11 @@ var (
 
 func init() {
 	f, err := os.OpenFile(COUNTER_FILE, os.O_RDONLY+os.O_CREATE, 0666)
-	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer f.Close()
+
 	b, err := io.ReadAll(f)
 	if err != nil {
 		log.Fatal(err)
@@ -58,10 +59,11 @@ func CounterHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, result)
 	data = append(data, fmt.Sprint(time_current.Format(LAYOUT)))
 	f, err := os.OpenFile(COUNTER_FILE, os.O_APPEND+os.O_WRONLY+os.O_CREATE, 0666)
-	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer f.Close()
+
 	if _, err = f.WriteString(fmt.Sprintln(time_current.Format(LAYOUT))); err != nil {
 		log.Fatal(err)
 	}
