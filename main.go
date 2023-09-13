@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -15,24 +16,43 @@ const (
 	LAYOUT       = "2006-01-02 15:04:05.999999999"
 )
 
-func counter(w http.ResponseWriter, r *http.Request) {
-	// time
-	time_current := time.Now()
+type SafeFile struct {
+	mu sync.Mutex
+}
 
-	// Read file
-	f, err := os.OpenFile(COUNTER_FILE, os.O_RDWR+os.O_CREATE, 0666)
+func (sf *SafeFile) Write(s string) (int, error) {
+	sf.mu.Lock()
+	defer sf.mu.Unlock()
+
+	f, err := os.OpenFile(COUNTER_FILE, os.O_APPEND+os.O_WRONLY+os.O_CREATE, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
-	b, err := io.ReadAll(f)
+	defer f.Close()
+
+	return f.WriteString(s)
+}
+
+func (sf *SafeFile) ReadAll() ([]byte, error) {
+	f, err := os.OpenFile(COUNTER_FILE, os.O_RDONLY+os.O_CREATE, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return io.ReadAll(f)
+}
+
+func counter(w http.ResponseWriter, r *http.Request) {
+	time_current := time.Now()
+
+	sf := new(SafeFile)
+	b, err := sf.ReadAll()
 	if err != nil {
 		log.Fatal(err)
 	}
 	lines := strings.Split(string(b), "\n")
 	lines = lines[:len(lines)-1]
 
-	// count last 1 min
-	time_1min_ago := time_current.Add(-time.Second)
+	time_1min_ago := time_current.Add(-time.Minute)
 	timezone, _ := time.LoadLocation("Local")
 
 	left := 0
@@ -51,9 +71,8 @@ func counter(w http.ResponseWriter, r *http.Request) {
 	}
 	result := len(lines) - left
 
-	// Write file and response
 	fmt.Fprintln(w, result)
-	if _, err = f.WriteString(fmt.Sprintln(time_current.Format(LAYOUT))); err != nil {
+	if _, err = sf.Write(fmt.Sprintln(time_current.Format(LAYOUT))); err != nil {
 		log.Fatal(err)
 	}
 }
